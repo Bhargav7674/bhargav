@@ -55,9 +55,6 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
 
   final List<ConfettiParticle> _particles = [];
 
-  // Wallet size
-  static const double _walletSize = 120.0;
-
   @override
   void initState() {
     super.initState();
@@ -94,14 +91,13 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
   }
 
   void _setupControllers() {
-    // ── Wallet entry: scale + slide up from slightly below ──
+    // ── Wallet entry ──
     _walletEntryCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _walletScaleAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _walletEntryCtrl, curve: Curves.elasticOut));
     _walletSlideAnim = Tween<double>(begin: 60.0, end: 0.0).animate(
-        CurvedAnimation(
-            parent: _walletEntryCtrl, curve: Curves.easeOutCubic));
+        CurvedAnimation(parent: _walletEntryCtrl, curve: Curves.easeOutCubic));
 
     // ── Confetti ──
     _confettiCtrl = AnimationController(
@@ -148,8 +144,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
           Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
               CurvedAnimation(
                   parent: _cardsCtrl,
-                  curve:
-                  Interval(start, end, curve: Curves.easeOutCubic))));
+                  curve: Interval(start, end, curve: Curves.easeOutCubic))));
     }
 
     // ── Settings icon ──
@@ -178,8 +173,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
         Tween<Offset>(begin: const Offset(0, 0.45), end: Offset.zero).animate(
             CurvedAnimation(
                 parent: _buttonCtrl,
-                curve:
-                const Interval(0.3, 1.0, curve: Curves.easeOutCubic)));
+                curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic)));
 
     // ── Marquee ──
     _marqueeCtrl = AnimationController(
@@ -189,31 +183,25 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
   }
 
   Future<void> _runSequence() async {
-    // Phase 1: wallet pops in from below center
     await Future.delayed(const Duration(milliseconds: 180));
     _walletEntryCtrl.forward();
 
-    // Phase 2: confetti burst + wobble starts
     await Future.delayed(const Duration(milliseconds: 120));
     _confettiCtrl.forward();
     _wobbleCtrl.repeat(reverse: true);
 
-    // Phase 3: stop wobble → wallet moves up + text appears
     await Future.delayed(const Duration(milliseconds: 1550));
     _wobbleCtrl.stop();
     _wobbleCtrl.animateTo(0.5, duration: const Duration(milliseconds: 180));
     _transitionCtrl.forward();
 
-    // Phase 4: cards + settings fade in
     await Future.delayed(const Duration(milliseconds: 580));
     _cardsCtrl.forward();
     _settingsCtrl.forward();
 
-    // Phase 5: button + gift card
     await Future.delayed(const Duration(milliseconds: 820));
     _buttonCtrl.forward();
 
-    // Phase 6: marquee
     await Future.delayed(const Duration(milliseconds: 420));
     _marqueeCtrl.forward();
   }
@@ -237,10 +225,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
       backgroundColor: const Color(0xFF111008),
       body: Stack(
         children: [
-          // Dot pattern background (top half only)
           Positioned.fill(child: CustomPaint(painter: _DotBgPainter())),
-
-          // Confetti layer
           AnimatedBuilder(
             animation: _confettiCtrl,
             builder: (_, __) => CustomPaint(
@@ -249,8 +234,6 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
                   particles: _particles, progress: _confettiCtrl.value),
             ),
           ),
-
-          // Main content (SafeArea)
           SafeArea(
             child: AnimatedBuilder(
               animation: Listenable.merge([
@@ -274,26 +257,31 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
     final mq = MediaQuery.of(context);
     final screenH = mq.size.height;
     final safeTop = mq.padding.top;
-
-    // Available height below safe area
     final availH = screenH - safeTop;
 
-    // Wallet vertical center positions (as fraction of availH)
-    // "Center stage" = 42% from top of availH
-    // "Top stage" = 20% from top of availH (leaves room for text below)
+    // Responsive wallet size
+    final double walletSize = screenH < 700 ? 90.0 : 110.0;
+
+    // Wallet fractions — responsive for small screens
     const double centerFrac = 0.42;
-    const double topFrac = 0.20;
+    final double topFrac = screenH < 700 ? 0.15 : 0.19;
 
     final walletFrac =
         centerFrac + (topFrac - centerFrac) * _walletTopAnim.value;
-
-    // Y position of wallet center, relative to SafeArea top (which is 0 here)
-    // We add the appbar row height (~52px) offset
     final walletCenterY = availH * walletFrac;
 
-    // Wobble angle (zeroed out as transition plays)
+    // Wobble zeroes out as transition plays
     final wobble =
         _wobbleAnim.value * (1.0 - _walletTopAnim.value.clamp(0.0, 1.0));
+
+    // Responsive MONEY font size
+    final double moneyFontSize = screenH < 700 ? 42.0 : 54.0;
+
+    // Responsive card vertical padding
+    final double cardVPad = screenH < 700 ? 10.0 : 15.0;
+
+    // Responsive spacing between cards
+    final double cardSpacing = screenH < 700 ? 6.0 : 10.0;
 
     return Stack(
       children: [
@@ -303,8 +291,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
           left: 0,
           right: 0,
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -318,11 +305,9 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
           ),
         ),
 
-        // ── Wallet icon (absolutely positioned at walletCenterY) ──
+        // ── Wallet icon ──
         Positioned(
-          top: walletCenterY -
-              (_walletSize / 2) +
-              _walletSlideAnim.value,
+          top: walletCenterY - (walletSize / 2) + _walletSlideAnim.value,
           left: 0,
           right: 0,
           child: Center(
@@ -330,22 +315,19 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
               angle: wobble,
               child: Transform.scale(
                 scale: _walletScaleAnim.value,
-                child: const SizedBox(
-                  width: _walletSize,
-                  height: _walletSize,
-                  child: WalletIconWidget(),
+                child: SizedBox(
+                  width: walletSize,
+                  height: walletSize,
+                  child: const WalletIconWidget(),
                 ),
               ),
             ),
           ),
         ),
 
-        // ── "blinkit MONEY" text — sits just below wallet ──
+        // ── "blinkit MONEY" text ──
         Positioned(
-          top: walletCenterY +
-              (_walletSize / 2) +
-              8 +
-              _walletSlideAnim.value,
+          top: walletCenterY + (walletSize / 2) + 6 + _walletSlideAnim.value,
           left: 0,
           right: 0,
           child: FadeTransition(
@@ -355,27 +337,25 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // "blinkit" label
                   Text(
                     'blinkit',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: screenH < 700 ? 18.0 : 22.0,
                       fontWeight: FontWeight.w500,
                       fontFamily: 'Montserrat',
                       letterSpacing: 0.5,
                     ),
                   ),
-                  // "MONEY" big bold
                   ScaleTransition(
                     scale: _textScaleAnim,
-                    child: const Text(
+                    child: Text(
                       'MONEY',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 56,
+                        fontSize: moneyFontSize,
                         fontWeight: FontWeight.w900,
                         fontFamily: 'Montserrat',
                         letterSpacing: 5,
@@ -389,19 +369,15 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
           ),
         ),
 
-        // ── Feature cards + CTA (shown once wallet has mostly transitioned up) ──
+        // ── Feature cards + CTA ──
         if (_transitionCtrl.value > 0.55)
           Positioned(
-            // Start just below the "MONEY" text area
-            // topFrac position + wallet height/2 + text block height (~95) + spacing
-            top: availH * topFrac +
-                (_walletSize / 2) +
-                100,
+            top: availH * topFrac + (walletSize / 2) + (screenH < 700 ? 80 : 100),
             left: 16,
             right: 16,
-            bottom: 48, // leave room for marquee
+            bottom: 48,
             child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -410,36 +386,36 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
                     index: 0,
                     iconWidget: _phonePayIcon(),
                     title: 'Single tap payments',
-                    subtitle:
-                    'Enjoy seamless payments without the wait for OTPs',
+                    subtitle: 'Enjoy seamless payments without the wait for OTPs',
+                    verticalPadding: cardVPad,
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: cardSpacing),
                   _featureCard(
                     index: 1,
                     iconWidget: _wifiPayIcon(),
                     title: 'Zero failures',
-                    subtitle:
-                    'Zero payment failures ensure you never miss an order',
+                    subtitle: 'Zero payment failures ensure you never miss an order',
+                    verticalPadding: cardVPad,
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: cardSpacing),
                   _featureCard(
                     index: 2,
                     iconWidget: _refundIcon(),
                     title: 'Real-time refunds',
-                    subtitle:
-                    'No need to wait for refunds. Blinkit Money refunds are instant!',
+                    subtitle: 'No need to wait for refunds. Blinkit Money refunds are instant!',
+                    verticalPadding: cardVPad,
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: screenH < 700 ? 12.0 : 18.0),
 
                   // Add Money button
                   FadeTransition(
                     opacity: _buttonFadeAnim,
                     child: SlideTransition(
                       position: _buttonSlideAnim,
-                      child: _addMoneyButton(),
+                      child: _addMoneyButton(screenH: screenH),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: screenH < 700 ? 6.0 : 10.0),
 
                   // Claim Gift Card
                   FadeTransition(
@@ -449,12 +425,13 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
                       child: _giftCardRow(),
                     ),
                   ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
           ),
 
-        // ── Scrolling marquee at bottom ──
+        // ── Marquee ──
         Positioned(
           bottom: 0,
           left: 0,
@@ -489,6 +466,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
     required Widget iconWidget,
     required String title,
     required String subtitle,
+    double verticalPadding = 15,
   }) {
     if (index >= _cardFadeAnims.length) return const SizedBox.shrink();
     return FadeTransition(
@@ -496,21 +474,18 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
       child: SlideTransition(
         position: _cardSlideAnims[index],
         child: Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E1A),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: Colors.white.withOpacity(0.07), width: 1),
+            border: Border.all(color: Colors.white.withOpacity(0.07), width: 1),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icon box
               Container(
-                width: 58,
-                height: 58,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: const Color(0xFF111110),
                   borderRadius: BorderRadius.circular(12),
@@ -532,7 +507,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: TextStyle(
@@ -553,18 +528,15 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
     );
   }
 
-  // Feature card icons
   Widget _phonePayIcon() {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Icon(Icons.smartphone,
-            color: Colors.white.withOpacity(0.9), size: 30),
+        Icon(Icons.smartphone, color: Colors.white.withOpacity(0.9), size: 28),
         Positioned(
           bottom: 8,
           right: 8,
-          child: Icon(Icons.touch_app,
-              color: Colors.white.withOpacity(0.7), size: 16),
+          child: Icon(Icons.touch_app, color: Colors.white.withOpacity(0.7), size: 14),
         ),
       ],
     );
@@ -574,13 +546,11 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
     return Stack(
       alignment: Alignment.center,
       children: [
-        Icon(Icons.smartphone,
-            color: const Color(0xFFFFCC00).withOpacity(0.9), size: 30),
+        Icon(Icons.smartphone, color: const Color(0xFFFFCC00).withOpacity(0.9), size: 28),
         Positioned(
           top: 8,
           right: 6,
-          child: const Icon(Icons.wifi,
-              color: Color(0xFFFFCC00), size: 16),
+          child: const Icon(Icons.wifi, color: Color(0xFFFFCC00), size: 14),
         ),
       ],
     );
@@ -590,24 +560,22 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
     return Stack(
       alignment: Alignment.center,
       children: [
-        Icon(Icons.smartphone,
-            color: const Color(0xFFFFCC00).withOpacity(0.9), size: 30),
+        Icon(Icons.smartphone, color: const Color(0xFFFFCC00).withOpacity(0.9), size: 28),
         Positioned(
           top: 8,
           right: 6,
-          child: const Icon(Icons.currency_rupee,
-              color: Color(0xFFFFCC00), size: 14),
+          child: const Icon(Icons.currency_rupee, color: Color(0xFFFFCC00), size: 13),
         ),
       ],
     );
   }
 
-  Widget _addMoneyButton() {
+  Widget _addMoneyButton({double screenH = 800}) {
     return GestureDetector(
       onTap: () {},
       child: Container(
         width: double.infinity,
-        height: 54,
+        height: screenH < 700 ? 48.0 : 54.0,
         decoration: BoxDecoration(
           color: const Color(0xFF2D7A30),
           borderRadius: BorderRadius.circular(14),
@@ -629,25 +597,23 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
 
   Widget _giftCardRow() {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: Colors.white.withOpacity(0.07), width: 1),
+        border: Border.all(color: Colors.white.withOpacity(0.07), width: 1),
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: const Color(0xFF3A2800),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Center(
-              child: Text('🎁', style: TextStyle(fontSize: 22)),
+              child: Text('🎁', style: TextStyle(fontSize: 20)),
             ),
           ),
           const SizedBox(width: 12),
@@ -696,7 +662,7 @@ class _BlinkitMoneyScreenState extends State<BlinkitMoneyScreen>
   }
 }
 
-// ── Dot pattern background (top ~50% of screen) ──
+// ── Dot pattern background ──
 class _DotBgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -709,8 +675,7 @@ class _DotBgPainter extends CustomPainter {
         canvas.drawCircle(
           Offset(x, y),
           r,
-          Paint()
-            ..color = const Color(0xFF9A8500).withOpacity(opacity),
+          Paint()..color = const Color(0xFF9A8500).withOpacity(opacity),
         );
       }
     }
